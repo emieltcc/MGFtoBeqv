@@ -17,10 +17,15 @@ git clone https://github.com/emieltcc/MGFtoBeqv.git mgftobeqv
 ```
 
 Alternatively, you can download the contents of this repository by clicking on **Code** and then **Download Zip** in the top right corner.
-The MGFtoBeqv package needs an additional package with .txt files, which can be downloaded from the internet using 
+The MGFtoBeqv package needs an additional package with .txt files, which can be downloaded from the internet using by first going to the newly created folder
 
 ```
-curl -O --output-dir C:\Users\eclaasen\mgftobeqv "https://arxiv.org/src/2007.05476v2/anc/{DiIds.txt,TriIds.txt,ModularGraphForms.m}"
+cd mgftobeqv
+```
+after which we can download the files using
+
+```
+curl -O "https://arxiv.org/src/2007.05476v2/anc/{DiIds.txt,TriIds.txt,ModularGraphForms.m}"
 ```
 
 Alternatively, you can go to https://arxiv.org/src/2007.05476v2/anc and download the files from there. These need to be put into the same folder as the package.
@@ -29,7 +34,7 @@ After cloning the repository open and run the Mathematica notebook **User_Manual
 
 ## Usage
 
-The MGFtoBeqv package consist of the package file ***MGFtoBevq.wl***,xxx, and multiple .txt files that store dihedral and trihedral identities, and constants the Laurent polynomials of depth 2 and 3 modular iterated integrals.
+The MGFtoBeqv package consist of the package file ***MGFtoBevq.wl*** and two .txt files that store constants of the Laurent polynomials of depth 2 and 3 modular iterated integrals.
 
 To load the package into a Mathematica notebook write:
 
