@@ -17,6 +17,13 @@ git clone https://github.com/emieltcc/MGFtoBeqv.git mgftobeqv
 ```
 
 Alternatively, you can download the contents of this repository by clicking on **Code** and then **Download Zip** in the top right corner.
+The MGFtoBeqv package needs an additional package with .txt files, which can be downloaded from the internet using 
+
+```
+curl -O --output-dir C:\Users\eclaasen\mgftobeqv "https://arxiv.org/src/2007.05476v2/anc/{DiIds.txt,TriIds.txt,ModularGraphForms.m}"
+```
+
+Alternatively, you can go to https://arxiv.org/src/2007.05476v2/anc and download the files from there. These need to be put into the same folder as the package.
 
 After cloning the repository open and run the Mathematica notebook **User_Manual.nb**. It contains a brief introduction to the MGFtoBeqv package and explains all the functions and symbols that the package provides.
 
