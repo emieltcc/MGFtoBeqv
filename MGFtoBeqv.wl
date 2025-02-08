@@ -18,7 +18,7 @@ Print["    The MGFtoBeqv package facilitates the conversion of modular graph for
 Print["(**************************)"];
 
 
-Block[{Print},BeginPackage["MGFtoBeqv`",{"ModularGraphForms`"}];]
+Block[{Print},BeginPackage["MGFtoBeqv`",{"ModularGraphForms`","TetSimplify`"}];]
 
 
 MGFtoBeqv::usage= "Expects a linear combination of modular graph forms c[] and converts it to modular iterated integrals. Works up to total graph weight 12.";
@@ -28,6 +28,7 @@ ConvertBasis::usage="Expects holomorphic graph weight as first entry and antihol
 CstBetaeqv::usage="Expects a linear combination of betaeqv[{},{}] and finds the constant in its Laurent polynomial.";
 CstMGF::usage="Expects a linear combination of MGFs and finds the constant in its Laurent polynomial in the c+[] convention.";
 betaeqv::usage="Represents modular iterated integrals of holomorphic Eisenstein series and takes arguments betaeqv[{j1,...,jl},{k1,...,kl}].";
+\[Theta]::usage="Represents the constant mismatch between the constants in the Laurent polynomials of the MGFs and its betaeqv expansion."
 
 
 (* ::Section:: *)
@@ -65,7 +66,7 @@ Print["Depth 3 betaeqv constants found at "<>packageDir<>"betaeqvdepth3const.txt
 Message[MGFtoBeqv::NoD3BetaeqvConstFile,packageDir<>"betaeqvdepth3const.txt"];]
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Dealing with constants*)
 
 
@@ -76,13 +77,13 @@ Message[MGFtoBeqv::NoD3BetaeqvConstFile,packageDir<>"betaeqvdepth3const.txt"];]
 addingaconstant::usage="Expects a linear combination of MGFs and replaces the MGF by itself plus a lambda-dependent function if the graph weights are equal.";
 addingaconstant[mgfs_]:=Module[{isolatedmgfs,thetarule},
 (*Make a list of all MGFs without coefficients*)
-isolatedmgfs=DeleteCases[Replace[x_.*Except[0]?ExactNumberQ:>x]/@({mgfs/.Plus->List}//Flatten)/.{tau[2]->1,\[Pi]->1,zeta[a_]->1,g[b_]->1},1|\[Theta][\[Lambda]]];
+isolatedmgfs=DeleteCases[Replace[x_.*Except[0]?ExactNumberQ:>x]/@({mgfs/.Plus->List}//Flatten)/.{tau[2]->1,\[Pi]->1,zeta[a_]->1,g[b_]->1,Subscript[\[Theta], x_][\[Lambda]]->1},1|\[Theta][\[Lambda]]];
 (*If \[LeftBracketingBar]A|\[LongEqual]|B\[RightBracketingBar], we add a constant*)
-thetarule=Table[If[CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[1]]==CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[2]],isolatedmgfs[[i]]->isolatedmgfs[[i]]+Pi^(CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[1]]/2+CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[2]]/2)/tau[2]^(CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[1]])Subscript[\[Theta], ToString[isolatedmgfs[[i]]]][\[Lambda]],##&[]],{i,Length[isolatedmgfs]}];
+thetarule=Table[If[CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1,Subscript[\[Theta], Subscript[x, _]][a_]->1}][[1]]==CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1,Subscript[\[Theta], Subscript[x, _]][a_]->1}][[2]],isolatedmgfs[[i]]->isolatedmgfs[[i]]+Pi^(CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[1]]/2+CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[2]]/2)/tau[2]^(CModWeight[(isolatedmgfs[[i]])/.{\[Theta][a_]->1}][[1]])Subscript[\[Theta], ToString[isolatedmgfs[[i]]]][\[Lambda]],##&[]],{i,Length[isolatedmgfs]}];
 mgfs/.thetarule//Expand]
 
 zetarule={zeta[x_]:>zeta[x]\[Theta][\[Lambda]],zeta[x_]^a_:>zeta[x]^a \[Theta][\[Lambda]]};
-doublethetarule={\[Theta][x_] Derivative[1][\[Theta]][x_]->Derivative[1][\[Theta]][x],\[Theta][x_] (\[Theta]^\[Prime]\[Prime])[x_]->(\[Theta]^\[Prime]\[Prime])[x],\[Theta][x_] \!\(\*SuperscriptBox[\(\[Theta]\), 
+doublethetarule={Subscript[\[Theta], x_][\[Lambda]]^2->Subscript[\[Theta], x][\[Lambda]],Subscript[\[Theta], 0][\[Lambda]]->0,\[Theta][x_] Derivative[1][\[Theta]][x_]->Derivative[1][\[Theta]][x],\[Theta][x_] (\[Theta]^\[Prime]\[Prime])[x_]->(\[Theta]^\[Prime]\[Prime])[x],\[Theta][x_] \!\(\*SuperscriptBox[\(\[Theta]\), 
 TagBox[
 RowBox[{"(", "y_", ")"}],
 Derivative],
@@ -103,8 +104,30 @@ Derivative],
 MultilineFunction->None]\)[x]};
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
+(*Constants up to graph weight 12*)
+
+
+eRule=e[x_]->tau[2]^x/Pi^x c[{{x,0},{x,0}}];
+
+CstMGF[mgf_]:=Module[{holW,antiHolW,mgfP},
+holW=CModWeight[mgf/.eRule/.tau[2]:>1][[1]];
+antiHolW=CModWeight[mgf/.eRule/.tau[2]:>1][[2]];
+(*Change conventions*)
+mgfP=tau[2]^(holW)/Pi^((holW+antiHolW)/2)(mgf/.eRule/.tau[2]:>1/.Pi:>1);
+CLaurentPoly[CConvertToNablaE[CSimplify[mgfP]]]/.y^a_:>y^Abs[a]/.y->0]
+
+CstBetaeqv[input_]:=input/.betaeqv:>const/.depth1construle/.depth2construle/.depth3construle
+
+constants={\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2}, {1, 1, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[4]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{3, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    2\ne[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 3}, {1, 1, 3}}]\>"\)]\)[\[Lambda]]->-(zeta[5]/60),\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[5]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{4, 0}, {2, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 3}, {3, 0, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2] e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 0}, {4, 0}}] c[{{3, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 1, 2, 2}, {1, 1, 0, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{1, 1, 3}, {1, 1, 1}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{5, 0}, {3, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{3, 0}, {1, 0}}] e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {5, 0}}] c[{{5, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2}, {1, 1, 2}}] e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2] e[4]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    3\ne[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 0}, {4, 0}}] c[{{4, 0}, {2, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{3, 0}, {1, 0}}] c[{{1, 1, 1}, {1, 1, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{3, 0}, {1, 0}}] c[{{3, 0}, {5, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    2\ne[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[6]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 2, 3}, {1, 2, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 2, 2}, {2, 2, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2, 2}, {1, 1, 2, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 4}, {1, 1, 4}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 4}, {5, 0, 1}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 1, 2, 3}, {2, 1, 3, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 2, 2}, {3, 0, 1, 2}}]\>"\)]\)[\[Lambda]]->0};
+
+
+(* ::Subsection::Closed:: *)
 (*Differential operator and separation*)
+
+
+ezrule={e[x_]:>tau[2]^x/Pi^x c[{{x,0},{x,0}}],zeta[y_]:>tau[2]^y/Pi^y zeta[y]};
+discardrule={gHat[2]:>0,tau[2]:>\[Infinity]};
 
 
 derivative::usage="Expects a linear combination of MGFs and auxiliairy functions of lambda and takes its holomorphic derivative.";
@@ -112,7 +135,7 @@ derivative[mgfs_]:=Module[{mgfslist},
 mgfslist=Flatten[{mgfs/.Plus->List}];
 (*Go through all terms one by one. If a term is a \[Lambda]-dependent "constant" we take a \[Lambda] derivative, otherwise we act with \[Pi]\[Del]*)
 Total[Table[If[CHolCR[mgfslist[[i]]]===0,\!\(
-\*SubscriptBox[\(\[PartialD]\), \(\[Lambda]\)]\(mgfslist[\([i]\)]\)\),addingaconstant[tau[2]Pi CHolCR[mgfslist[[i]]]//CSimplify]],{i,Length[mgfslist]}]]]
+\*SubscriptBox[\(\[PartialD]\), \(\[Lambda]\)]\(mgfslist[\([i]\)]\)\),addingaconstant[tau[2]Pi CHolCR[mgfslist[[i]]]//Tet]],{i,Length[mgfslist]}]]]
 
 separate::usage="Expects a linear combination of MGFs and returns a nested list with separations based on appearances of hol. Eisenstein series.";
 separate[mgfs_]:=Module[{mgfslist,positionsNoG,positionsG,posG,separatedList,splittedGs,flattenedlist,regroupedlist},
@@ -151,18 +174,18 @@ ninthiter::usage="Expects a linear combination of MGFs and applies the functions
 tenthiter::usage="Expects a linear combination of MGFs and applies the functions derivative and separate to the first elements of the deepest nested lists.";
 eleventhiter::usage="Expects a linear combination of MGFs and applies the functions derivative and separate to the first elements of the deepest nested lists.";
 firstiter[mgfs_]:=Module[{input},
-input=initialization[mgfs];
-Table[separate[derivative[input[[a,1]]]],{a,Length[input]}]/.zetarule/.doublethetarule]
-seconditer[mgfs_]:=Table[separate[derivative[mgfs[[b,a,1]]]],{b,Length[mgfs]},{a,Length[mgfs[[b]]]}]/.zetarule/.doublethetarule
-thirditer[mgfs_]:=Table[separate[derivative[mgfs[[x,b,a,1]]]],{x,Length[mgfs]},{b,Length[mgfs[[x]]]},{a,Length[mgfs[[x,b]]]}]/.zetarule/.doublethetarule
-fourthiter[mgfs_]:=Table[separate[derivative[mgfs[[d,x,b,a,1]]]],{d,Length[mgfs]},{x,Length[mgfs[[d]]]},{b,Length[mgfs[[d,x]]]},{a,Length[mgfs[[d,x,b]]]}]/.zetarule/.doublethetarule
-fifthiter[mgfs_]:=Table[separate[derivative[ mgfs[[z,d,x,b,a,1]]]],{z,Length[mgfs]},{d,Length[mgfs[[z]]]},{x,Length[mgfs[[z,d]]]},{b,Length[mgfs[[z,d,x]]]},{a,Length[mgfs[[z,d,x,b]]]}]/.zetarule/.doublethetarule
-sixthiter[mgfs_]:=Table[separate[derivative[mgfs[[f,z,d,x,b,a,1]]]],{f,Length[mgfs]},{z,Length[mgfs[[f]]]},{d,Length[mgfs[[f,z]]]},{x,Length[mgfs[[f,z,d]]]},{b,Length[mgfs[[f,z,d,x]]]},{a,Length[mgfs[[f,z,d,x,b]]]}]/.zetarule/.doublethetarule
-seventhiter[mgfs_]:=Table[separate[derivative[mgfs[[w,f,z,d,x,b,a,1]]]],{w,Length[mgfs]},{f,Length[mgfs[[w]]]},{z,Length[mgfs[[w,f]]]},{d,Length[mgfs[[w,f,z]]]},{x,Length[mgfs[[w,f,z,d]]]},{b,Length[mgfs[[w,f,z,d,x]]]},{a,Length[mgfs[[w,f,z,d,x,b]]]}]/.zetarule/.doublethetarule
-eighthiter[mgfs_]:=Table[separate[derivative[mgfs[[h,w,f,z,d,x,b,a,1]]]],{h,Length[mgfs]},{w,Length[mgfs[[h]]]},{f,Length[mgfs[[h,w]]]},{z,Length[mgfs[[h,w,f]]]},{d,Length[mgfs[[h,w,f,z]]]},{x,Length[mgfs[[h,w,f,z,d]]]},{b,Length[mgfs[[h,w,f,z,d,x]]]},{a,Length[mgfs[[h,w,f,z,d,x,b]]]}]/.zetarule/.doublethetarule
-ninthiter[mgfs_]:=Table[separate[derivative[mgfs[[i,h,w,f,z,d,x,b,a,1]]]],{i,Length[mgfs]},{h,Length[mgfs[[i]]]},{w,Length[mgfs[[i,h]]]},{f,Length[mgfs[[i,h,w]]]},{z,Length[mgfs[[i,h,w,f]]]},{d,Length[mgfs[[i,h,w,f,z]]]},{x,Length[mgfs[[i,h,w,f,z,d]]]},{b,Length[mgfs[[i,h,w,f,z,d,x]]]},{a,Length[mgfs[[i,h,w,f,z,d,x,b]]]}]/.zetarule/.doublethetarule
-tenthiter[mgfs_]:=Table[separate[derivative[mgfs[[j,i,h,w,f,z,d,x,b,a,1]]]],{j,Length[mgfs]},{i,Length[mgfs[[j]]]},{h,Length[mgfs[[j,i]]]},{w,Length[mgfs[[j,i,h]]]},{f,Length[mgfs[[j,i,h,w]]]},{z,Length[mgfs[[j,i,h,w,f]]]},{d,Length[mgfs[[j,i,h,w,f,z]]]},{x,Length[mgfs[[j,i,h,w,f,z,d]]]},{b,Length[mgfs[[j,i,h,w,f,z,d,x]]]},{a,Length[mgfs[[j,i,h,w,f,z,d,x,b]]]}]/.zetarule/.doublethetarule
-eleventhiter[mgfs_]:=Table[separate[derivative[mgfs[[k,j,i,h,w,f,z,d,x,b,a,1]]]],{k,Length[mgfs]},{j,Length[mgfs[[k]]]},{i,Length[mgfs[[k,j]]]},{h,Length[mgfs[[k,j,i]]]},{w,Length[mgfs[[k,j,i,h]]]},{f,Length[mgfs[[k,j,i,h,w]]]},{z,Length[mgfs[[k,j,i,h,w,f]]]},{d,Length[mgfs[[k,j,i,h,w,f,z]]]},{x,Length[mgfs[[k,j,i,h,w,f,z,d]]]},{b,Length[mgfs[[k,j,i,h,w,f,z,d,x]]]},{a,Length[mgfs[[k,j,i,h,w,f,z,d,x,b]]]}]/.zetarule/.doublethetarule
+input=initialization[mgfs]/.constants/.zetarule/.doublethetarule;
+Table[separate[derivative[input[[aa,1]]]],{aa,Length[input]}]/.constants/.zetarule/.doublethetarule]
+seconditer[mgfs_]:=Table[separate[derivative[mgfs[[t,aa,1]]]],{t,Length[mgfs]},{aa,Length[mgfs[[t]]]}]/.constants/.zetarule/.doublethetarule
+thirditer[mgfs_]:=Table[separate[derivative[mgfs[[x,t,aa,1]]]],{x,Length[mgfs]},{t,Length[mgfs[[x]]]},{aa,Length[mgfs[[x,t]]]}]/.constants/.zetarule/.doublethetarule
+fourthiter[mgfs_]:=Table[separate[derivative[mgfs[[dd,x,t,aa,1]]]],{dd,Length[mgfs]},{x,Length[mgfs[[dd]]]},{t,Length[mgfs[[dd,x]]]},{aa,Length[mgfs[[dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+fifthiter[mgfs_]:=Table[separate[derivative[ mgfs[[zz,dd,x,t,aa,1]]]],{zz,Length[mgfs]},{dd,Length[mgfs[[zz]]]},{x,Length[mgfs[[zz,dd]]]},{t,Length[mgfs[[zz,dd,x]]]},{aa,Length[mgfs[[zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+sixthiter[mgfs_]:=Table[separate[derivative[mgfs[[f,zz,dd,x,t,aa,1]]]],{f,Length[mgfs]},{zz,Length[mgfs[[f]]]},{dd,Length[mgfs[[f,zz]]]},{x,Length[mgfs[[f,zz,dd]]]},{t,Length[mgfs[[f,zz,dd,x]]]},{aa,Length[mgfs[[f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+seventhiter[mgfs_]:=Table[separate[derivative[mgfs[[w,f,zz,dd,x,t,aa,1]]]],{w,Length[mgfs]},{f,Length[mgfs[[w]]]},{zz,Length[mgfs[[w,f]]]},{dd,Length[mgfs[[w,f,zz]]]},{x,Length[mgfs[[w,f,zz,dd]]]},{t,Length[mgfs[[w,f,zz,dd,x]]]},{aa,Length[mgfs[[w,f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+eighthiter[mgfs_]:=Table[separate[derivative[mgfs[[h,w,f,zz,dd,x,t,aa,1]]]],{h,Length[mgfs]},{w,Length[mgfs[[h]]]},{f,Length[mgfs[[h,w]]]},{zz,Length[mgfs[[h,w,f]]]},{dd,Length[mgfs[[h,w,f,zz]]]},{x,Length[mgfs[[h,w,f,zz,dd]]]},{t,Length[mgfs[[h,w,f,zz,dd,x]]]},{aa,Length[mgfs[[h,w,f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+ninthiter[mgfs_]:=Table[separate[derivative[mgfs[[i,h,w,f,zz,dd,x,t,aa,1]]]],{i,Length[mgfs]},{h,Length[mgfs[[i]]]},{w,Length[mgfs[[i,h]]]},{f,Length[mgfs[[i,h,w]]]},{zz,Length[mgfs[[i,h,w,f]]]},{dd,Length[mgfs[[i,h,w,f,zz]]]},{x,Length[mgfs[[i,h,w,f,zz,dd]]]},{t,Length[mgfs[[i,h,w,f,zz,dd,x]]]},{aa,Length[mgfs[[i,h,w,f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+tenthiter[mgfs_]:=Table[separate[derivative[mgfs[[j,i,h,w,f,zz,dd,x,t,aa,1]]]],{j,Length[mgfs]},{i,Length[mgfs[[j]]]},{h,Length[mgfs[[j,i]]]},{w,Length[mgfs[[j,i,h]]]},{f,Length[mgfs[[j,i,h,w]]]},{zz,Length[mgfs[[j,i,h,w,f]]]},{dd,Length[mgfs[[j,i,h,w,f,zz]]]},{x,Length[mgfs[[j,i,h,w,f,zz,dd]]]},{t,Length[mgfs[[j,i,h,w,f,zz,dd,x]]]},{aa,Length[mgfs[[j,i,h,w,f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
+eleventhiter[mgfs_]:=Table[separate[derivative[mgfs[[k,j,i,h,w,f,zz,dd,x,t,aa,1]]]],{k,Length[mgfs]},{j,Length[mgfs[[k]]]},{i,Length[mgfs[[k,j]]]},{h,Length[mgfs[[k,j,i]]]},{w,Length[mgfs[[k,j,i,h]]]},{f,Length[mgfs[[k,j,i,h,w]]]},{zz,Length[mgfs[[k,j,i,h,w,f]]]},{dd,Length[mgfs[[k,j,i,h,w,f,zz]]]},{x,Length[mgfs[[k,j,i,h,w,f,zz,dd]]]},{t,Length[mgfs[[k,j,i,h,w,f,zz,dd,x]]]},{aa,Length[mgfs[[k,j,i,h,w,f,zz,dd,x,t]]]}]/.constants/.zetarule/.doublethetarule
 
 level1::usage="Expects a linear combination of MGFs and returns a nested list where we have applied derivative and separate once.";
 level2::usage="Expects a linear combination of MGFs and returns a nested list where we have applied derivative and separate twice.";
@@ -176,16 +199,16 @@ level9::usage="Expects a linear combination of MGFs and returns a nested list wh
 level10::usage="Expects a linear combination of MGFs and returns a nested list where we have applied derivative and separate ten times.";
 level11::usage="Expects a linear combination of MGFs and returns a nested list where we have applied derivative and separate eleven times.";
 level1[mgfs_]:=firstiter[mgfs];
-level2[mgfs_]:=seconditer[firstiter[mgfs]];
-level3[mgfs_]:=thirditer[seconditer[firstiter[mgfs]]];
-level4[mgfs_]:=fourthiter[thirditer[seconditer[firstiter[mgfs]]]];
-level5[mgfs_]:=fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]];
-level6[mgfs_]:=sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]];
-level7[mgfs_]:=seventhiter[sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]]];
-level8[mgfs_]:=eighthiter[seventhiter[sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]]]];
-level9[mgfs_]:=ninthiter[eighthiter[seventhiter[sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]]]]];
-level10[mgfs_]:=tenthiter[ninthiter[eighthiter[seventhiter[sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]]]]]];
-level11[mgfs_]:=eleventhiter[tenthiter[ninthiter[eighthiter[seventhiter[sixthiter[fifthiter[fourthiter[thirditer[seconditer[firstiter[mgfs]]]]]]]]]]];
+level2[mgfs_]:=seconditer[level1[mgfs]];
+level3[mgfs_]:=thirditer[level2[mgfs]];
+level4[mgfs_]:=fourthiter[level3[mgfs]];
+level5[mgfs_]:=fifthiter[level4[mgfs]];
+level6[mgfs_]:=sixthiter[level5[mgfs]];
+level7[mgfs_]:=seventhiter[level6[mgfs]];
+level8[mgfs_]:=eighthiter[level7[mgfs]];
+level9[mgfs_]:=ninthiter[level8[mgfs]];
+level10[mgfs_]:=tenthiter[level9[mgfs]];
+level11[mgfs_]:=eleventhiter[level10[mgfs]];
 
 level1MGFred::usage="Expects a linear combination of MGFs and returns a list of the functions levelx applied to said level 1.";
 level2MGFred::usage="Expects a linear combination of MGFs and returns a list of the functions levelx applied to said level 2.";
@@ -198,20 +221,20 @@ level8MGFred::usage="Expects a linear combination of MGFs and returns a list of 
 level9MGFred::usage="Expects a linear combination of MGFs and returns a list of the functions levelx applied to said level 9.";
 level10MGFred::usage="Expects a linear combination of MGFs and returns a list of the functions levelx applied to said level 10.";
 level11MGFred::usage="Expects a linear combination of MGFs and returns a list of the functions levelx applied to said level 11.";
-level1MGFred[mgfs_]:={level1[mgfs]}
-level2MGFred[mgfs_]:={level1[mgfs],level2[mgfs]}
-level3MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs]}
-level4MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs]}
-level5MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs]}
-level6MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs]}
-level7MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs],level7[mgfs]}
-level8MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs],level7[mgfs],level8[mgfs]}
-level9MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs],level7[mgfs],level8[mgfs],level9[mgfs]}
-level10MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs],level7[mgfs],level8[mgfs],level9[mgfs],level10[mgfs]}
-level11MGFred[mgfs_]:={level1[mgfs],level2[mgfs],level3[mgfs],level4[mgfs],level5[mgfs],level6[mgfs],level7[mgfs],level8[mgfs],level9[mgfs],level10[mgfs],level11[mgfs]}
+level1MGFred[mgfs_]:=Module[{},{level1[mgfs]}]
+level2MGFred[mgfs_]:=Module[{l1,l2},l1=level1[mgfs];l2=seconditer[l1];{l1,l2}]
+level3MGFred[mgfs_]:=Module[{l1,l2,l3},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];{l1,l2,l3}]
+level4MGFred[mgfs_]:=Module[{l1,l2,l3,l4},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];{l1,l2,l3,l4}]
+level5MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];{l1,l2,l3,l4,l5}]
+level6MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];{l1,l2,l3,l4,l5,l6}]
+level7MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6,l7},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];l7=seventhiter[l6];{l1,l2,l3,l4,l5,l6,l7}]
+level8MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6,l7,l8},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];l7=seventhiter[l6];l8=eighthiter[l7];{l1,l2,l3,l4,l5,l6,l7,l8}]
+level9MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6,l7,l8,l9},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];l7=seventhiter[l6];l8=eighthiter[l7];l9=ninthiter[l8];{l1,l2,l3,l4,l5,l6,l7,l8,l9}]
+level10MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6,l7,l8,l9,l10},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];l7=seventhiter[l6];l8=eighthiter[l7];l9=ninthiter[l8];l10=tenthiter[l9];{l1,l2,l3,l4,l5,l6,l7,l8,l9,l10}]
+level11MGFred[mgfs_]:=Module[{l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11},l1=level1[mgfs];l2=seconditer[l1];l3=thirditer[l2];l4=fourthiter[l3];l5=fifthiter[l4];l6=sixthiter[l5];l7=seventhiter[l6];l8=eighthiter[l7];l9=ninthiter[l8];l10=tenthiter[l9];l11=eleventhiter[l10];{l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11}]
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*Finding candidates and solving the system of equations*)
 
 
@@ -242,7 +265,7 @@ rule=Table[betavars[[i]]->Total[pinablaTotal[betavars[[i]]]],{i,Length[betavars]
 betas/.rule/.betaeqv[{},{}]:>1]
 
 
-(* ::Subsubsection:: *)
+(* ::Subsubsection::Closed:: *)
 (*Finding all candidates*)
 
 
@@ -289,7 +312,7 @@ newRHSbetas=newRHSbetas/.rule2];
 firstCandidates[newRHSbetas]]
 
 
-(* ::Subsubsection:: *)
+(* ::Subsubsection::Closed:: *)
 (*Solving the system of equations*)
 
 
@@ -442,25 +465,7 @@ list2=replacement;
 Do[list1=ReplacePart[list1,{w,r,o,p,s,q,d,f,h,k,j,i,1}->list2[[w,r,o,p,s,q,d,f,h,k,j,i]]],{w,Length[list1]},{r,Length[list1[[w]]]},{o,Length[list1[[w,r]]]},{p,Length[list1[[w,r,o]]]},{s,Length[list1[[w,r,o,p]]]},{q,Length[list1[[w,r,o,p,s]]]},{d,Length[list1[[w,r,o,p,s,q]]]},{f,Length[list1[[w,r,o,p,s,q,d]]]},{h,Length[list1[[w,r,o,p,s,q,d,f]]]},{k,Length[list1[[w,r,o,p,s,q,d,f,h]]]},{j,Length[list1[[w,r,o,p,s,q,d,f,h,k]]]},{i,Length[list1[[w,r,o,p,s,q,d,f,h,k,j]]]}];list1]
 
 
-(* ::Subsection:: *)
-(*Constants up to graph weight 12*)
-
-
-eRule=e[x_]->tau[2]^x/Pi^x c[{{x,0},{x,0}}];
-
-CstMGF[mgf_]:=Module[{holW,antiHolW,mgfP},
-holW=CModWeight[mgf/.eRule/.tau[2]:>1][[1]];
-antiHolW=CModWeight[mgf/.eRule/.tau[2]:>1][[2]];
-(*Change conventions*)
-mgfP=tau[2]^(holW)/Pi^((holW+antiHolW)/2)(mgf/.eRule/.tau[2]:>1/.Pi:>1);
-CLaurentPoly[CConvertToNablaE[CSimplify[mgfP]]]/.y^a_:>y^Abs[a]/.y->0]
-
-CstBetaeqv[input_]:=input/.betaeqv:>const/.depth1construle/.depth2construle/.depth3construle
-
-constants={\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2}, {1, 1, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[4]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{3, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    2\ne[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 3}, {1, 1, 3}}]\>"\)]\)[\[Lambda]]->-(zeta[5]/60),\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[5]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{4, 0}, {2, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 3}, {3, 0, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2] e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 0}, {4, 0}}] c[{{3, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 1, 2, 2}, {1, 1, 0, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{1, 1, 3}, {1, 1, 1}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{5, 0}, {3, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {3, 0}}] c[{{3, 0}, {1, 0}}] e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 0}, {5, 0}}] c[{{5, 0}, {1, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2}, {1, 1, 2}}] e[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[2] e[4]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    3\ne[2]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 0}, {4, 0}}] c[{{4, 0}, {2, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{3, 0}, {1, 0}}] c[{{1, 1, 1}, {1, 1, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{3, 0}, {1, 0}}] c[{{3, 0}, {5, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<    2\ne[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[3]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<e[6]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 2, 3}, {1, 2, 3}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{2, 2, 2}, {2, 2, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 2, 2}, {1, 1, 2, 2}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<c[{{1, 1, 4}, {1, 1, 4}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 4}, {5, 0, 1}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 1, 2, 3}, {2, 1, 3, 0}}]\>"\)]\)[\[Lambda]]->0,\!\(\*SubscriptBox[\(\[Theta]\), \("\<a[{{0, 2, 2, 2}, {3, 0, 1, 2}}]\>"\)]\)[\[Lambda]]->0};
-
-
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*The full construction*)
 
 
@@ -683,7 +688,7 @@ holW=CModWeight[mgf/.tau[2]:>1][[1]];
 antiHolW=CModWeight[mgf/.tau[2]:>1][[2]];
 (*Change conventions*)
 mgfP=tau[2]^(holW)/Pi^((holW+antiHolW)/2)mgf;
-Which[antiHolW==1,level1Conversion[mgfP],antiHolW==2,level2Conversion[mgfP],antiHolW==3,level3Conversion[mgfP],antiHolW==4,level4Conversion[mgfP],antiHolW==5,level5Conversion[mgfP],antiHolW==6,level6Conversion[mgfP],antiHolW==7,level7Conversion[mgfP],antiHolW==8,level8Conversion[mgfP],antiHolW==9,level9Conversion[mgfP],antiHolW==10,level10Conversion[mgfP],antiHolW==11,level11Conversion[mgfP]]]
+Which[antiHolW==1,level1Conversion[mgfP],antiHolW==2,level2Conversion[mgfP],antiHolW==3,level3Conversion[mgfP],antiHolW==4,level4Conversion[mgfP],antiHolW==5,level5Conversion[mgfP],antiHolW==6,level6Conversion[mgfP],antiHolW==7,level7Conversion[mgfP],antiHolW==8,level8Conversion[mgfP],antiHolW==9,level9Conversion[mgfP],antiHolW==10,level10Conversion[mgfP],antiHolW==11,level11Conversion[mgfP]]/.Subscript[\[Theta], x__][\[Lambda]]:>Subscript[\[Theta], x]]
 
 
 ConvertBasis[a_,b_]:=Module[{basis},
