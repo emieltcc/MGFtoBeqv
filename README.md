@@ -6,7 +6,7 @@ The MGFtoBeqv package facilitates the translation from MGFs in their lattice-sum
 
 The functions defined in the MGFtoBeqv package are derived from the paper [1].
 
-1. E. Claasen and M. Doroudiani, From Modular Graph Forms to Modular Iterated Integrals, arXiv:hep-th/2025.abcde.
+1. E. Claasen and M. Doroudiani, From Modular Graph Forms to Iterated Integrals, arXiv:hep-th/2025.abcde.
 
 ## Getting Started
 
