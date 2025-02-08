@@ -34,9 +34,9 @@ After cloning the repository open and run the Mathematica notebook **User_Manual
 
 ## Usage
 
-The MGFtoBeqv package consist of the package file ***MGFtoBevq.wl*** and two .txt files that store constants of the Laurent polynomials of depth 2 and 3 modular iterated integrals.
+The MGFtoBeqv package consist of the package file ***MGFtoBevq.wl*** and another package file **tetsimplify.wl** with tetrahedral modular graph form simplifications, and two .txt files that store constants of the Laurent polynomials of depth 2 and 3 modular iterated integrals.
 
-To load the package into a Mathematica notebook write:
+To load the main package into a Mathematica notebook write:
 
 ```
 Get["MGFtoBeqv.wl"]
